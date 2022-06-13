@@ -1,17 +1,12 @@
-from audioop import add
 import pandas as pd
 import pickle
-
 from sklearn.feature_extraction import DictVectorizer
-from sklearn.linear_model import LinearRegression, Lasso, Ridge
+from sklearn.linear_model import LinearRegression,Lasso
 from sklearn.metrics import mean_squared_error
-
+import mlflow
 import xgboost as xgb
-
 from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
 from hyperopt.pyll import scope
-
-import mlflow
 
 mlflow.set_tracking_uri("sqlite:///mlflow.db")
 mlflow.set_experiment("nyc-taxi-experiment")
@@ -32,11 +27,13 @@ def read_dataframe(filename):
     
     return df
 
-def add_features(train_path="./data/green_tripdata_2021-01.parquet",
-                 val_path="./data/green_tripdata_2021-02.parquet"):
+
+def add_features(train_path = "../data/green_tripdata_2021-01.parquet",
+                val_path = "../data/green_tripdata_2021-02.parquet"):
+
     df_train = read_dataframe(train_path)
     df_val = read_dataframe(val_path)
-
+    
     print(len(df_train))
     print(len(df_val))
 
@@ -46,7 +43,7 @@ def add_features(train_path="./data/green_tripdata_2021-01.parquet",
     categorical = ['PU_DO'] #'PULocationID', 'DOLocationID']
     numerical = ['trip_distance']
 
-    dv = DictVectorizer()
+    dv = DictVectorizer() ## global variable so we return it
 
     train_dicts = df_train[categorical + numerical].to_dict(orient='records')
     X_train = dv.fit_transform(train_dicts)
@@ -58,9 +55,10 @@ def add_features(train_path="./data/green_tripdata_2021-01.parquet",
     y_train = df_train[target].values
     y_val = df_val[target].values
 
-    return X_train, X_val, y_train, y_val, dv
+    return X_train,X_val,y_train,y_val,dv
 
-# # Modelling
+
+# Modeling section 
 
 # lr = LinearRegression()
 # lr.fit(X_train, y_train)
@@ -71,6 +69,8 @@ def add_features(train_path="./data/green_tripdata_2021-01.parquet",
 
 # with open('models/lin_reg.bin', 'wb') as f_out:
 #     pickle.dump((dv, lr), f_out)
+
+
 
 # with mlflow.start_run():
 
@@ -90,7 +90,8 @@ def add_features(train_path="./data/green_tripdata_2021-01.parquet",
 
 #     mlflow.log_artifact(local_path="models/lin_reg.bin", artifact_path="models_pickle")
 
-def train_model_search(train, valid, y_val):
+def train_model_search(train, valid,y_val,dv):
+
     def objective(params):
         with mlflow.start_run():
             mlflow.set_tag("model", "xgboost")
@@ -116,7 +117,7 @@ def train_model_search(train, valid, y_val):
         'min_child_weight': hp.loguniform('min_child_weight', -1, 3),
         'objective': 'reg:linear',
         'seed': 42
-    }
+        }
 
     best_result = fmin(
         fn=objective,
@@ -125,9 +126,11 @@ def train_model_search(train, valid, y_val):
         max_evals=1,
         trials=Trials()
     )
-    return
+    return 
 
-def train_best_model(train, valid, y_val, dv):
+
+def train_best_model(train, valid, y_val,dv):
+
     with mlflow.start_run():
         
         train = xgb.DMatrix(X_train, label=y_train)
@@ -157,15 +160,20 @@ def train_best_model(train, valid, y_val, dv):
         rmse = mean_squared_error(y_val, y_pred, squared=False)
         mlflow.log_metric("rmse", rmse)
 
-        with open("models/preprocessor.b", "wb") as f_out:
+        with open("../models/preprocessor.b", "wb") as f_out:
             pickle.dump(dv, f_out)
-        mlflow.log_artifact("models/preprocessor.b", artifact_path="preprocessor")
+        mlflow.log_artifact("../models/preprocessor.b", artifact_path="preprocessor")
 
         mlflow.xgboost.log_model(booster, artifact_path="models_mlflow")
 
 if __name__ == "__main__":
-    X_train, X_val, y_train, y_val, dv = add_features()
+    X_train,X_val,y_train,y_val,dv = add_features()
     train = xgb.DMatrix(X_train, label=y_train)
     valid = xgb.DMatrix(X_val, label=y_val)
-    train_model_search(train, valid, y_val)
+
+    train_model_search(train, valid,y_val,dv)
     train_best_model(train, valid, y_val, dv)
+
+
+
+        
