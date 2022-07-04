@@ -52,9 +52,10 @@ def prepare_dictionaries(df: pd.DataFrame):
 
 
 def load_model(run_id):
-    logged_model = f's3://mlflow-artifacts-remote-store/2/{run_id}/artifacts/model'
+    #logged_model = f's3://mlflow-artifacts-remote-store/2/{run_id}/artifacts/model'
+    logged_model = f'{run_id}/artifacts/model'
+
     model = mlflow.pyfunc.load_model(logged_model)
-    
     return model
 
 def save_results(df,y_pred,run_id,output_file):
@@ -72,11 +73,9 @@ def save_results(df,y_pred,run_id,output_file):
     
     df_result.to_parquet(output_file, index=False)
 
-
 @task
 def apply_model(input_file, run_id, output_file):
     logger = get_run_logger()
-
 
     logger.info(f'reading the data from {input_file}...')
 
@@ -99,9 +98,9 @@ def get_paths(run_date,taxi_type,run_id):
     month = prev_month.month
 
     input_file = f'https://s3.amazonaws.com/nyc-tlc/trip+data/{taxi_type}_tripdata_{year:04d}-{month:02d}.parquet'
-    #output_file = f'output/{taxi_type}/{year:04d}-{month:02d}.parquet'
+    output_file = f'output/{taxi_type}/{year:04d}-{month:02d}.parquet'
     # save to the s3 bucket 
-    output_file = f's3://mlflow-artifacts-remote-store/taxi_type={taxi_type}/year={year:04d}/month={month:02d}/{run_id}.parquet'
+    #output_file = f's3://mlflow-artifacts-remote-store/taxi_type={taxi_type}/year={year:04d}/month={month:02d}/{run_id}.parquet'
     
     return input_file,output_file
 
@@ -114,6 +113,9 @@ def ride_duration_prediction(
     if run_date is None:
         ctx = get_run_context()
         run_date = ctx.flow_run_expected_start_time
+        
+        # to test deployment with the agent
+        #run_date = datetime(year=2021,month=6,day=1)
 
     input_file, output_file = get_paths(run_date,taxi_type,run_id)
 
@@ -121,7 +123,6 @@ def ride_duration_prediction(
     run_id=run_id, 
     output_file=output_file)
 
-    
 
 def run():
 
