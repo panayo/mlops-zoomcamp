@@ -1,0 +1,7 @@
+{
+    "python.testing.pytestArgs": [
+        "week6-best-practices"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
+}

@@ -6,7 +6,7 @@ import pickle
 import pandas as pd
 import os
 
-def prepara_data(df,categorical):
+def prepare_data(df,categorical):
 
     df['duration'] = df.dropOff_datetime - df.pickup_datetime
     df['duration'] = df.duration.dt.total_seconds() / 60
